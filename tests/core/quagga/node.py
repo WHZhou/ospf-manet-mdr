@@ -118,6 +118,10 @@ class QuaggaNode(pycore.nodes.LxcNode):
 
 STATEDIR=%s
 
+for f in /proc/sys/net/ipv4/conf/*/rp_filter; do
+    echo 0 > $f
+done
+
 waitfile()
 {
     fname=$1
