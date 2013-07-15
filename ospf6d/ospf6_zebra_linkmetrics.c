@@ -97,7 +97,13 @@ ospf6_neighbor_lookup_by_ifaddr (struct in6_addr *linklocal_addr,
   struct listnode *n;
   struct ospf6_neighbor *on;
 
-  assert (IN6_IS_ADDR_LINKLOCAL (linklocal_addr));
+  if (!IN6_IS_ADDR_LINKLOCAL (linklocal_addr))
+    {
+      char buf[INET6_ADDRSTRLEN];
+      ospf6_addr2str6 (linklocal_addr, buf, sizeof (buf));
+      zlog_err ("%s: invalid link-local address: %s", __func__, buf);
+      return NULL;
+    }
 
   for (ALL_LIST_ELEMENTS_RO (oi->neighbor_list, n, on))
     if (IN6_ARE_ADDR_EQUAL (&on->linklocal_addr, linklocal_addr))
