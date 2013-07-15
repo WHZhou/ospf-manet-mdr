@@ -337,18 +337,52 @@ lmgenl_recv_padq (struct nlmsghdr *nlh)
   memset (&linkmetrics, 0, sizeof (linkmetrics));
 
   IFREQATTR (LMGENL_ATTR_IFINDEX)
-    linkmetrics.ifindex = nla_get_u32 (attrs[LMGENL_ATTR_IFINDEX]);
+    {
+      linkmetrics.ifindex = nla_get_u32 (attrs[LMGENL_ATTR_IFINDEX]);
+      if (linkmetrics.ifindex < 1)
+	{
+	  zlog_err ("%s: invalid ifindex: %u", __func__, linkmetrics.ifindex);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_REMOTEV6LLADDR)
-    nla_memcpy (&linkmetrics.linklocal_addr, attrs[LMGENL_ATTR_REMOTEV6LLADDR],
-		sizeof (linkmetrics.linklocal_addr));
+    {
+      nla_memcpy (&linkmetrics.linklocal_addr,
+		  attrs[LMGENL_ATTR_REMOTEV6LLADDR],
+		  sizeof (linkmetrics.linklocal_addr));
+      if (!IN6_IS_ADDR_LINKLOCAL (&linkmetrics.linklocal_addr))
+	{
+	  char buf[INET6_ADDRSTRLEN];
+
+	  inet_ntop (AF_INET6, &linkmetrics.linklocal_addr, buf, sizeof (buf));
+	  zlog_err ("%s: invalid link-local address: %s", __func__, buf);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_PADQ_RLQ)
-    linkmetrics.metrics.rlq = nla_get_u8 (attrs[LMGENL_ATTR_PADQ_RLQ]);
+    {
+      linkmetrics.metrics.rlq = nla_get_u8 (attrs[LMGENL_ATTR_PADQ_RLQ]);
+      if (linkmetrics.metrics.rlq > 100)
+	{
+	  zlog_err ("%s: invalid relative link quality: %u",
+		    __func__, linkmetrics.metrics.rlq);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_PADQ_RESOURCE)
-    linkmetrics.metrics.resource =
-      nla_get_u8 (attrs[LMGENL_ATTR_PADQ_RESOURCE]);
+    {
+      linkmetrics.metrics.resource =
+	nla_get_u8 (attrs[LMGENL_ATTR_PADQ_RESOURCE]);
+      if (linkmetrics.metrics.resource > 100)
+	{
+	  zlog_err ("%s: invalid resources: %u",
+		    __func__, linkmetrics.metrics.resource);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_PADQ_LATENCY)
     linkmetrics.metrics.latency =
@@ -361,6 +395,14 @@ lmgenl_recv_padq (struct nlmsghdr *nlh)
   IFREQATTR (LMGENL_ATTR_PADQ_MDR)
     linkmetrics.metrics.max_datarate =
       nla_get_u16 (attrs[LMGENL_ATTR_PADQ_MDR]);
+
+  if (linkmetrics.metrics.current_datarate > linkmetrics.metrics.max_datarate)
+    {
+      zlog_err ("%s: invalid current/maximum datarate: %u/%u", __func__,
+		linkmetrics.metrics.current_datarate,
+		linkmetrics.metrics.max_datarate);
+      return -1;
+    }
 
   if (IS_ZEBRA_DEBUG_KERNEL)
     zebra_linkmetrics_logdebug (&linkmetrics);
@@ -404,11 +446,29 @@ lmgenl_recv_status (struct nlmsghdr *nlh)
   memset (&linkstatus, 0, sizeof (linkstatus));
 
   IFREQATTR (LMGENL_ATTR_IFINDEX)
-    linkstatus.ifindex = nla_get_u32 (attrs[LMGENL_ATTR_IFINDEX]);
+    {
+      linkstatus.ifindex = nla_get_u32 (attrs[LMGENL_ATTR_IFINDEX]);
+      if (linkstatus.ifindex < 1)
+	{
+	  zlog_err ("%s: invalid ifindex: %u", __func__, linkstatus.ifindex);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_REMOTEV6LLADDR)
-    nla_memcpy (&linkstatus.linklocal_addr, attrs[LMGENL_ATTR_REMOTEV6LLADDR],
-		sizeof (linkstatus.linklocal_addr));
+    {
+      nla_memcpy (&linkstatus.linklocal_addr,
+		  attrs[LMGENL_ATTR_REMOTEV6LLADDR],
+		  sizeof (linkstatus.linklocal_addr));
+      if (!IN6_IS_ADDR_LINKLOCAL (&linkstatus.linklocal_addr))
+	{
+	  char buf[INET6_ADDRSTRLEN];
+
+	  inet_ntop (AF_INET6, &linkstatus.linklocal_addr, buf, sizeof (buf));
+	  zlog_err ("%s: invalid link-local address: %s", __func__, buf);
+	  return -1;
+	}
+    }
 
   IFREQATTR (LMGENL_ATTR_STS_STATUS)
     linkstatus.status = nla_get_u8 (attrs[LMGENL_ATTR_STS_STATUS]);
